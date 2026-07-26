@@ -2,32 +2,56 @@
 set -euo pipefail
 
 PRODUCT_NAME="SlotLauncher"
-DEST="./$PRODUCT_NAME.app"
+CONFIG="${1:-release}"
 
-echo "Looking for built $PRODUCT_NAME.app in Xcode DerivedData..."
+# Find Xcode's Swift toolchain (needed for macro plugins)
+SWIFT=""
+for candidate in \
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift" \
+    "/Users/rishvarma/Downloads/Xcode-beta.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift"; do
+    if [ -x "$candidate" ]; then
+        SWIFT="$candidate"
+        break
+    fi
+done
 
-# Find the most recently built .app in DerivedData
-APP=$(find ~/Library/Developer/Xcode/DerivedData \
-    -name "$PRODUCT_NAME.app" -type d \
-    -not -path "*/SourcePackages/*" \
-    -not -path "*/.build/*" \
-    -print0 2>/dev/null | xargs -0 ls -dt 2>/dev/null | head -1)
+if [ -z "$SWIFT" ]; then
+    SWIFT=$(xcrun -f swift 2>/dev/null || echo "")
+fi
 
-if [ -z "$APP" ]; then
-    echo "❌  No $PRODUCT_NAME.app found in DerivedData."
-    echo ""
-    echo "Build it first in Xcode:"
-    echo "  1. open Package.swift"
-    echo "  2. Product → Build (⌘B)"
-    echo "  3. Run this script again"
+if [ -z "$SWIFT" ] || ! "$SWIFT" build --version &>/dev/null; then
+    echo "❌  Swift toolchain not found. Install Xcode from the Mac App Store."
     exit 1
 fi
 
-rm -rf "$DEST"
-cp -R "$APP" "$DEST"
+echo "Building with: $SWIFT"
+"$SWIFT" build -c "$CONFIG"
 
-echo "✅  $DEST"
-echo "   (from $APP)"
+APP_BUNDLE="./$PRODUCT_NAME.app"
+rm -rf "$APP_BUNDLE"
+mkdir -p "$APP_BUNDLE/Contents/MacOS"
+mkdir -p "$APP_BUNDLE/Contents/Resources"
+
+cp ".build/$CONFIG/$PRODUCT_NAME" "$APP_BUNDLE/Contents/MacOS/$PRODUCT_NAME"
+
+PLIST="Sources/$PRODUCT_NAME/Info.plist"
+if [ -f "$PLIST" ]; then
+    cp "$PLIST" "$APP_BUNDLE/Contents/Info.plist"
+else
+    /usr/libexec/PlistBuddy -c "Add CFBundleIdentifier string com.slotlauncher.app" \
+        -c "Add CFBundleName string $PRODUCT_NAME" \
+        -c "Add CFBundleExecutable string $PRODUCT_NAME" \
+        -c "Add CFBundlePackageType string APPL" \
+        -c "Add CFBundleVersion string 1" \
+        -c "Add CFBundleShortVersionString string 1.0.0" \
+        -c "Add LSUIElement bool false" \
+        -c "Add NSHighResolutionCapable bool true" \
+        "$APP_BUNDLE/Contents/Info.plist" >/dev/null 2>&1
+fi
+
+xattr -cr "$APP_BUNDLE" 2>/dev/null || true
+
 echo ""
-echo "Now drag $PRODUCT_NAME.app to Applications, or:"
-echo "  cp -R \"$DEST\" /Applications/"
+echo "✅  $APP_BUNDLE ($(du -sh "$APP_BUNDLE" | cut -f1))"
+echo ""
+echo "   cp -R \"$APP_BUNDLE\" /Applications/"
