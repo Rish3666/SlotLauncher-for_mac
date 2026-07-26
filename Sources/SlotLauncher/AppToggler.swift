@@ -10,12 +10,28 @@ class AppToggler {
         guard let slot = configStore.slots.first(where: { $0.id == slotID }) else { return }
 
         if slot.bundleIdentifier.isEmpty || NSWorkspace.shared.urlForApplication(withBundleIdentifier: slot.bundleIdentifier) == nil {
-            configStore.slotToConfigure = slotID
             NSApplication.shared.activate(ignoringOtherApps: true)
+            pickApp(for: slotID)
             return
         }
 
         toggle(bundleIdentifier: slot.bundleIdentifier)
+    }
+
+    private func pickApp(for slotID: Int) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.applicationBundle]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.canChooseDirectories = false
+        panel.message = "Choose an application for Slot \(slotID)"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        let bundleID = bundleIdentifierForApp(at: url)
+        let name = appDisplayName(at: url)
+        let updatedSlot = SlotConfig(id: slotID, bundleIdentifier: bundleID, displayName: name)
+        configStore.updateSlot(updatedSlot)
+
+        toggle(bundleIdentifier: bundleID)
     }
 
     func toggle(bundleIdentifier: String) {
