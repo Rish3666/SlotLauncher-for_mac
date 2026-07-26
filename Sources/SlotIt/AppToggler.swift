@@ -10,12 +10,17 @@ class AppToggler {
         guard let slot = configStore.slots.first(where: { $0.id == slotID }) else { return }
 
         if slot.bundleIdentifier.isEmpty || NSWorkspace.shared.urlForApplication(withBundleIdentifier: slot.bundleIdentifier) == nil {
-            NSApplication.shared.activate(ignoringOtherApps: true)
-            pickApp(for: slotID)
+            Task { @MainActor in
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                pickApp(for: slotID)
+            }
             return
         }
 
-        toggle(bundleIdentifier: slot.bundleIdentifier)
+        let bundleID = slot.bundleIdentifier
+        Task { @MainActor in
+            toggle(bundleIdentifier: bundleID)
+        }
     }
 
     private func pickApp(for slotID: Int) {

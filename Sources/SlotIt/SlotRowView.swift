@@ -6,6 +6,8 @@ struct SlotRowView: View {
     let shortcutName: KeyboardShortcuts.Name
     let needsConfiguration: Bool
     let onPickApp: () -> Void
+    let onRemove: () -> Void
+    let onShortcutChanged: (String?) -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -40,18 +42,33 @@ struct SlotRowView: View {
             }
             .buttonStyle(.bordered)
 
-            KeyboardShortcuts.Recorder("", name: shortcutName)
-                .fixedSize()
+            Button {
+                onRemove()
+            } label: {
+                Image(systemName: "trash")
+                    .foregroundColor(.red)
+            }
+            .buttonStyle(.bordered)
+            .help("Remove shortcut")
+
+            KeyboardShortcuts.Recorder("", name: shortcutName, onChange: { shortcut in
+                if let s = shortcut,
+                   let data = try? JSONEncoder().encode(s),
+                   let json = String(data: data, encoding: .utf8) {
+                    onShortcutChanged(json)
+                } else {
+                    onShortcutChanged(nil)
+                }
+            })
+            .fixedSize()
+            .id("recorder-\(slot.id)")
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 8)
     }
 
     private var appIcon: NSImage? {
-        guard !slot.bundleIdentifier.isEmpty,
-              let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: slot.bundleIdentifier) else {
-            return nil
-        }
-        return NSWorkspace.shared.icon(forFile: url.path)
+        guard !slot.bundleIdentifier.isEmpty else { return nil }
+        return ConfigStore.shared.cachedIcon(for: slot.bundleIdentifier)
     }
 }

@@ -1,5 +1,4 @@
 import Cocoa
-import Combine
 import KeyboardShortcuts
 
 struct ConfigFile: Codable {
@@ -19,9 +18,11 @@ class ConfigStore: ObservableObject {
     @Published var needsConfiguration: Set<Int> = []
     @Published var nextID: Int = 1
 
+    var iconCache: [String: NSImage] = [:]
+
     private var fileObserver: DispatchSourceFileSystemObject?
     private var debounceWorkItem: DispatchWorkItem?
-    private var udCancellable: AnyCancellable?
+    private var registeredSlotIDs: Set<Int> = []
 
     private var configURL: URL {
         let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -33,7 +34,6 @@ class ConfigStore: ObservableObject {
     private init() {
         load()
         startWatching()
-        startObservingShortcutChanges()
         validateSlots()
     }
 
@@ -61,7 +61,6 @@ class ConfigStore: ObservableObject {
     }
 
     func save() {
-        syncShortcutsToConfig()
         let url = configURL
         do {
             let configFile = ConfigFile(nextID: nextID, slots: slots)
@@ -78,6 +77,7 @@ class ConfigStore: ObservableObject {
         guard let index = slots.firstIndex(where: { $0.id == slot.id }) else { return }
         slots[index] = slot
         needsConfiguration.remove(slot.id)
+        iconCache.removeValue(forKey: slot.bundleIdentifier)
         save()
     }
 
@@ -91,20 +91,33 @@ class ConfigStore: ObservableObject {
     }
 
     func removeSlot(_ id: Int) {
+        let name = shortcutName(for: id)
+        KeyboardShortcuts.removeHandler(for: name)
+        KeyboardShortcuts.setShortcut(nil, for: name)
         slots.removeAll { $0.id == id }
         needsConfiguration.remove(id)
+        registeredSlotIDs.remove(id)
         save()
     }
 
     func registerHotkey(for slotID: Int) {
+        guard registeredSlotIDs.insert(slotID).inserted else { return }
         let name = shortcutName(for: slotID)
         KeyboardShortcuts.onKeyUp(for: name) { AppToggler.shared.toggle(slotID: slotID) }
     }
 
     func registerAllHotkeys() {
+        KeyboardShortcuts.removeAllHandlers()
+        registeredSlotIDs = []
         for slot in slots {
             registerHotkey(for: slot.id)
         }
+    }
+
+    func onShortcutChanged(slotID: Int, shortcutJSON: String?) {
+        guard let index = slots.firstIndex(where: { $0.id == slotID }) else { return }
+        slots[index].shortcutJSON = shortcutJSON
+        save()
     }
 
     func applyShortcutsFromConfig() {
@@ -117,28 +130,16 @@ class ConfigStore: ObservableObject {
         }
     }
 
-    private func syncShortcutsToConfig() {
-        for i in slots.indices {
-            guard let shortcut = KeyboardShortcuts.getShortcut(for: shortcutName(for: slots[i].id)) else {
-                if slots[i].shortcutJSON != nil {
-                    slots[i].shortcutJSON = nil
-                }
-                continue
-            }
-            let json = encodeShortcut(shortcut)
-            if slots[i].shortcutJSON != json {
-                slots[i].shortcutJSON = json
-            }
-        }
-    }
-
-    private func encodeShortcut(_ shortcut: KeyboardShortcuts.Shortcut) -> String? {
-        guard let data = try? JSONEncoder().encode(shortcut),
-              let str = String(data: data, encoding: .utf8) else { return nil }
-        return str
+    func cachedIcon(for bundleID: String) -> NSImage? {
+        if let icon = iconCache[bundleID] { return icon }
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return nil }
+        let icon = NSWorkspace.shared.icon(forFile: url.path)
+        iconCache[bundleID] = icon
+        return icon
     }
 
     private func validateSlots() {
+        needsConfiguration.removeAll()
         for slot in slots {
             if slot.bundleIdentifier.isEmpty {
                 needsConfiguration.insert(slot.id)
@@ -166,8 +167,6 @@ class ConfigStore: ObservableObject {
             self?.debounceWorkItem?.cancel()
             let workItem = DispatchWorkItem { [weak self] in
                 self?.load()
-                self?.applyShortcutsFromConfig()
-                self?.registerAllHotkeys()
                 self?.validateSlots()
             }
             self?.debounceWorkItem = workItem
@@ -180,14 +179,5 @@ class ConfigStore: ObservableObject {
 
         source.resume()
         fileObserver = source
-    }
-
-    private func startObservingShortcutChanges() {
-        udCancellable = NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
-            .debounce(for: .seconds(0.5), scheduler: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.syncShortcutsToConfig()
-                self?.save()
-            }
     }
 }
