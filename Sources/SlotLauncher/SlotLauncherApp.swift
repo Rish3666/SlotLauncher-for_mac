@@ -32,13 +32,6 @@ struct SlotLauncherApp: App {
                 .frame(minWidth: 520, minHeight: 400)
         }
         .windowResizability(.contentMinSize)
-        .commands {
-            CommandGroup(after: .about) {
-                Button("Show SlotLauncher") {
-                    NSApplication.shared.windows.first?.makeKeyAndOrderFront(nil)
-                }
-            }
-        }
     }
 }
 
@@ -51,6 +44,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         KeyboardShortcuts.onKeyUp(for: .slot5) { AppToggler.shared.toggle(slotID: 5) }
 
         ConfigStore.shared.applyShortcutsFromConfig()
+
+        addShowSlotLauncherMenuItem()
+    }
+
+    @objc private func showSettingsWindow() {
+        NSApplication.shared.windows.first?.makeKeyAndOrderFront(nil)
+    }
+
+    private func addShowSlotLauncherMenuItem() {
+        guard let mainMenu = NSApplication.shared.mainMenu,
+              let appMenuItem = mainMenu.items.first,
+              let appMenu = appMenuItem.submenu else { return }
+        let item = NSMenuItem(title: "Show SlotLauncher", action: #selector(showSettingsWindow), keyEquivalent: "")
+        item.target = self
+        appMenu.addItem(item)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
