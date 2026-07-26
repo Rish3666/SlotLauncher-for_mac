@@ -34,7 +34,9 @@ struct SettingsView: View {
         }
         .frame(minWidth: 520, minHeight: 400)
         .onAppear {
-            resolvePendingSlots()
+            DispatchQueue.main.async {
+                resolvePendingSlots()
+            }
         }
     }
 
