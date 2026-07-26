@@ -8,6 +8,7 @@ class ConfigStore: ObservableObject {
 
     @Published var slots: [SlotConfig] = []
     @Published var needsConfiguration: Set<Int> = []
+    @Published var slotToConfigure: Int?
 
     private var fileObserver: DispatchSourceFileSystemObject?
     private var debounceWorkItem: DispatchWorkItem?
