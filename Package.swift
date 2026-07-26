@@ -14,7 +14,8 @@ let package = Package(
             name: "SlotLauncher",
             dependencies: [
                 .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
-            ]
+            ],
+            exclude: ["Info.plist"]
         ),
     ]
 )
