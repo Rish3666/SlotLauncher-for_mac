@@ -2,48 +2,32 @@
 set -euo pipefail
 
 PRODUCT_NAME="SlotLauncher"
-CONFIG="${1:-release}"
+DEST="./$PRODUCT_NAME.app"
 
-swift build -c "$CONFIG"
+echo "Looking for built $PRODUCT_NAME.app in Xcode DerivedData..."
 
-BUILD_DIR=".build/$CONFIG"
-APP_BUNDLE="$BUILD_DIR/$PRODUCT_NAME.app"
+# Find the most recently built .app in DerivedData
+APP=$(find ~/Library/Developer/Xcode/DerivedData \
+    -name "$PRODUCT_NAME.app" -type d \
+    -not -path "*/SourcePackages/*" \
+    -not -path "*/.build/*" \
+    -print0 2>/dev/null | xargs -0 ls -dt 2>/dev/null | head -1)
 
-mkdir -p "$APP_BUNDLE/Contents/MacOS"
-mkdir -p "$APP_BUNDLE/Contents/Resources"
-
-cp "$BUILD_DIR/$PRODUCT_NAME" "$APP_BUNDLE/Contents/MacOS/$PRODUCT_NAME"
-
-PLIST="Sources/$PRODUCT_NAME/Info.plist"
-if [ -f "$PLIST" ]; then
-    cp "$PLIST" "$APP_BUNDLE/Contents/Info.plist"
-else
-    cat > "$APP_BUNDLE/Contents/Info.plist" <<- EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>$PRODUCT_NAME</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.slotlauncher.app</string>
-    <key>CFBundleName</key>
-    <string>$PRODUCT_NAME</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
-    <key>LSUIElement</key>
-    <false/>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-</dict>
-</plist>
-EOF
+if [ -z "$APP" ]; then
+    echo "❌  No $PRODUCT_NAME.app found in DerivedData."
+    echo ""
+    echo "Build it first in Xcode:"
+    echo "  1. open Package.swift"
+    echo "  2. Product → Build (⌘B)"
+    echo "  3. Run this script again"
+    exit 1
 fi
 
+rm -rf "$DEST"
+cp -R "$APP" "$DEST"
+
+echo "✅  $DEST"
+echo "   (from $APP)"
 echo ""
-echo "✅  $APP_BUNDLE"
-echo "cp -R \"$APP_BUNDLE\" /Applications/"
+echo "Now drag $PRODUCT_NAME.app to Applications, or:"
+echo "  cp -R \"$DEST\" /Applications/"
