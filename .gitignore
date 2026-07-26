@@ -1,18 +1,18 @@
-# Xcode
-*.xcworkspace
-*.xcuserdata
-DerivedData/
+
 .build/
-.build/x86_64-apple-macosx/
 .build/arm64-apple-macosx/
-
-# macOS
+.build/x86_64-apple-macosx/
 .DS_Store
-*.swp
+*.app
 *.swo
+*.swp
+*.xcuserdata
+*.xcworkspace
 *~
-
-# Build artifacts
 /.build
-/Packages
 /*.xcodeproj
+/Packages
+# Build artifacts
+# macOS
+# Xcode
+DerivedData/
