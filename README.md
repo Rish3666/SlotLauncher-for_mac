@@ -46,8 +46,9 @@ open Package.swift
 In Xcode:
 1. Select the `SlotLauncher` scheme.
 2. Choose **My Mac** as the destination.
-3. Go to the target's **Signing & Capabilities** tab and **remove App Sandbox** (Xcode's default may add it).
-4. Build and run (⌘R).
+3. Select **SlotLauncher** in the Project Navigator, go to **Build Settings**, and set **Bundle Identifier** to `com.slotlauncher.app` (the default SPM-generated bundle may not have one, which produces cosmetic `linkd.autoShortcut` warnings in the console — harmless but noisy).
+4. Go to the target's **Signing & Capabilities** tab and **remove App Sandbox** (Xcode's default may add it).
+5. Build and run (⌘R).
 
 The built `.app` will be unsigned — Gatekeeper requires **Control-click → Open** the first time, or run `xattr -cr SlotLauncher.app`.
 
