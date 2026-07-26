@@ -38,7 +38,7 @@ struct SettingsView: View {
                 resolvePendingSlots()
             }
         }
-        .onChange(of: configStore.slotToConfigure) { slotID in
+        .onChange(of: configStore.slotToConfigure) { _, slotID in
             guard let slotID else { return }
             configStore.slotToConfigure = nil
             pickApp(for: slotID)
