@@ -34,6 +34,11 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 cp ".build/$CONFIG/$PRODUCT_NAME" "$APP_BUNDLE/Contents/MacOS/$PRODUCT_NAME"
 
+# Copy dependency resource bundles (KeyboardShortcuts needs its .bundle for localized strings)
+for bundle in ".build/$CONFIG/"*.bundle; do
+    [ -e "$bundle" ] && cp -R "$bundle" "$APP_BUNDLE/Contents/Resources/"
+done
+
 PLIST="Sources/$PRODUCT_NAME/Info.plist"
 if [ -f "$PLIST" ]; then
     cp "$PLIST" "$APP_BUNDLE/Contents/Info.plist"
