@@ -12,8 +12,7 @@ class ConfigStore: ObservableObject {
 
     private var fileObserver: DispatchSourceFileSystemObject?
     private var debounceWorkItem: DispatchWorkItem?
-    private var udDebounceWorkItem: DispatchWorkItem?
-    private var udObserver: NSObjectProtocol?
+    private var udCancellable: AnyCancellable?
 
     private var configURL: URL {
         let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -152,18 +151,11 @@ class ConfigStore: ObservableObject {
     }
 
     private func startObservingShortcutChanges() {
-        udObserver = NotificationCenter.default.addObserver(
-            forName: UserDefaults.didChangeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.udDebounceWorkItem?.cancel()
-            let item = DispatchWorkItem { [weak self] in
+        udCancellable = NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .debounce(for: .seconds(0.5), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
                 self?.syncShortcutsToConfig()
                 self?.save()
             }
-            self?.udDebounceWorkItem = item
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: item)
-        }
     }
 }
