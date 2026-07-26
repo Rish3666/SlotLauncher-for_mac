@@ -1,10 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-PRODUCT_NAME="SlotLauncher"
+PRODUCT_NAME="SlotIt"
 CONFIG="${1:-release}"
 
-# Find Xcode's Swift toolchain (needed for macro plugins)
 SWIFT=""
 for candidate in \
     "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift" \
@@ -34,7 +33,6 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 cp ".build/$CONFIG/$PRODUCT_NAME" "$APP_BUNDLE/Contents/MacOS/$PRODUCT_NAME"
 
-# Copy dependency resource bundles (KeyboardShortcuts needs its .bundle for localized strings)
 for bundle in ".build/$CONFIG/"*.bundle; do
     [ -e "$bundle" ] && cp -R "$bundle" "$APP_BUNDLE/Contents/Resources/"
 done
@@ -43,7 +41,7 @@ PLIST="Sources/$PRODUCT_NAME/Info.plist"
 if [ -f "$PLIST" ]; then
     cp "$PLIST" "$APP_BUNDLE/Contents/Info.plist"
 else
-    /usr/libexec/PlistBuddy -c "Add CFBundleIdentifier string com.slotlauncher.app" \
+    /usr/libexec/PlistBuddy -c "Add CFBundleIdentifier string com.slotit.app" \
         -c "Add CFBundleName string $PRODUCT_NAME" \
         -c "Add CFBundleExecutable string $PRODUCT_NAME" \
         -c "Add CFBundlePackageType string APPL" \

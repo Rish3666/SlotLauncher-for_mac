@@ -2,12 +2,22 @@ import Cocoa
 import Combine
 import KeyboardShortcuts
 
+struct ConfigFile: Codable {
+    var nextID: Int = 1
+    var slots: [SlotConfig] = []
+}
+
+func shortcutName(for slotID: Int) -> KeyboardShortcuts.Name {
+    KeyboardShortcuts.Name("slot_\(slotID)")
+}
+
 @MainActor
 class ConfigStore: ObservableObject {
     static let shared = ConfigStore()
 
     @Published var slots: [SlotConfig] = []
     @Published var needsConfiguration: Set<Int> = []
+    @Published var nextID: Int = 1
 
     private var fileObserver: DispatchSourceFileSystemObject?
     private var debounceWorkItem: DispatchWorkItem?
@@ -15,7 +25,7 @@ class ConfigStore: ObservableObject {
 
     private var configURL: URL {
         let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("SlotLauncher")
+            .appendingPathComponent("SlotIt")
         try? FileManager.default.createDirectory(at: supportDir, withIntermediateDirectories: true)
         return supportDir.appendingPathComponent("config.json")
     }
@@ -35,8 +45,9 @@ class ConfigStore: ObservableObject {
         }
         do {
             let data = try Data(contentsOf: url)
-            let decoded = try JSONDecoder().decode([SlotConfig].self, from: data)
-            slots = decoded
+            let decoded = try JSONDecoder().decode(ConfigFile.self, from: data)
+            slots = decoded.slots
+            nextID = decoded.nextID
         } catch {
             print("Failed to load config: \(error)")
             writeDefaultConfig()
@@ -44,14 +55,8 @@ class ConfigStore: ObservableObject {
     }
 
     private func writeDefaultConfig() {
-        let defaults = [
-            SlotConfig(id: 1, bundleIdentifier: "com.mitchellh.ghostty", displayName: "Ghostty"),
-            SlotConfig(id: 2, bundleIdentifier: "", displayName: "Helium"),
-            SlotConfig(id: 3, bundleIdentifier: "net.whatsapp.WhatsApp", displayName: "WhatsApp"),
-            SlotConfig(id: 4, bundleIdentifier: "", displayName: "Feishin"),
-            SlotConfig(id: 5, bundleIdentifier: "md.obsidian", displayName: "Obsidian"),
-        ]
-        slots = defaults
+        slots = []
+        nextID = 1
         save()
     }
 
@@ -59,7 +64,8 @@ class ConfigStore: ObservableObject {
         syncShortcutsToConfig()
         let url = configURL
         do {
-            let data = try JSONEncoder().encode(slots)
+            let configFile = ConfigFile(nextID: nextID, slots: slots)
+            let data = try JSONEncoder().encode(configFile)
             let tempURL = url.appendingPathExtension("tmp")
             try data.write(to: tempURL, options: .atomic)
             _ = try FileManager.default.replaceItemAt(url, withItemAt: tempURL)
@@ -73,6 +79,32 @@ class ConfigStore: ObservableObject {
         slots[index] = slot
         needsConfiguration.remove(slot.id)
         save()
+    }
+
+    func addSlot() -> SlotConfig {
+        let slot = SlotConfig(id: nextID, bundleIdentifier: "", displayName: "Shortcut \(nextID)")
+        nextID += 1
+        slots.append(slot)
+        save()
+        registerHotkey(for: slot.id)
+        return slot
+    }
+
+    func removeSlot(_ id: Int) {
+        slots.removeAll { $0.id == id }
+        needsConfiguration.remove(id)
+        save()
+    }
+
+    func registerHotkey(for slotID: Int) {
+        let name = shortcutName(for: slotID)
+        KeyboardShortcuts.onKeyUp(for: name) { AppToggler.shared.toggle(slotID: slotID) }
+    }
+
+    func registerAllHotkeys() {
+        for slot in slots {
+            registerHotkey(for: slot.id)
+        }
     }
 
     func applyShortcutsFromConfig() {
@@ -135,6 +167,7 @@ class ConfigStore: ObservableObject {
             let workItem = DispatchWorkItem { [weak self] in
                 self?.load()
                 self?.applyShortcutsFromConfig()
+                self?.registerAllHotkeys()
                 self?.validateSlots()
             }
             self?.debounceWorkItem = workItem

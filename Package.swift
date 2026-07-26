@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "SlotLauncher",
+            name: "SlotIt",
     platforms: [
         .macOS(.v14)
     ],
@@ -11,7 +11,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "SlotLauncher",
+    name: "SlotIt",
             dependencies: [
                 .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
             ],

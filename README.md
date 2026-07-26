@@ -1,8 +1,8 @@
-# SlotLauncher
+# SlotIt
 
-A macOS utility that binds up to five system-wide global keyboard shortcuts to user-configured applications. Each shortcut cycles its target through a three-state toggle: **launch** → **hide** → **refocus** → **hide** → ...
+A macOS utility that binds system-wide global keyboard shortcuts to user-configured applications. Each shortcut cycles its target through a three-state toggle: **launch** → **hide** → **refocus** → **hide** → ...
 
-Default shortcuts are Cmd+1 through Cmd+5, mapped to Ghostty, Helium, WhatsApp, Feishin, and Obsidian — but every slot and every shortcut is fully customizable via the GUI or by editing a JSON config file by hand.
+Slots are fully customizable — add as many as you want, each with its own app and key combo, via the GUI or by hand-editing the config file. No pre-configured defaults.
 
 ## Features
 

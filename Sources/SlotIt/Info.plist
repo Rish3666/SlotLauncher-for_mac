@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>com.slotlauncher.app</string>
+	<string>com.slotit.app</string>
 	<key>CFBundleName</key>
-	<string>SlotLauncher</string>
+	<string>SlotIt</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>LSUIElement</key>
